@@ -105,7 +105,7 @@ jobs:
             exit 0
           fi
 
-          result=$(node -e "const fs=require('node:fs'); const data=JSON.parse(fs.readFileSync('show.json','utf8')); const version=process.env.EXTENSION_VERSION; const versions=Array.isArray(data?.versions)?data.versions:Array.isArray(data)?data.flatMap((e)=>e?.versions??[]):[]; const exists=versions.some((entry)=>typeof entry==='string'?entry===version:entry?.version===version); process.stdout.write(exists?'true':'false');")
+          result=$(node -e "const fs=require('node:fs'); const raw=fs.readFileSync('show.json','utf8').trim(); let data; try { data=JSON.parse(raw); } catch { process.stdout.write('false'); process.exit(0); } const version=process.env.EXTENSION_VERSION; const versions=Array.isArray(data?.versions)?data.versions:Array.isArray(data)?data.flatMap((e)=>e?.versions??[]):[]; const exists=versions.some((entry)=>typeof entry==='string'?entry===version:entry?.version===version); process.stdout.write(exists?'true':'false');")
           echo "published=$result" >> $GITHUB_OUTPUT
 
       - name: Publish to VS Marketplace
