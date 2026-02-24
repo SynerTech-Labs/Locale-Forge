@@ -1,0 +1,147 @@
+{
+  "name": "locale-forge",
+  "displayName": "Locale Forge",
+  "description": "Generate locale files from English JSON using OpenAI in parallel.",
+  "version": "0.1.0",
+  "publisher": "localeforge",
+  "license": "MIT",
+  "private": false,
+  "type": "commonjs",
+  "main": "./dist/extension.js",
+  "engines": {
+    "vscode": "^1.109.0"
+  },
+  "categories": [
+    "Other",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "i18n",
+    "l10n",
+    "localization",
+    "translations",
+    "openai"
+  ],
+  "activationEvents": [
+    "onCommand:localeforge.generateFromActiveFile",
+    "onCommand:localeforge.generateFromOpenTabs",
+    "onCommand:localeforge.setApiKey",
+    "onCommand:localeforge.configureLocales"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "localeforge.generateFromActiveFile",
+        "title": "Locale Forge: Generate Locales From Active File"
+      },
+      {
+        "command": "localeforge.generateFromOpenTabs",
+        "title": "Locale Forge: Generate Locales From Open Tabs"
+      },
+      {
+        "command": "localeforge.setApiKey",
+        "title": "Locale Forge: Set OpenAI API Key"
+      },
+      {
+        "command": "localeforge.configureLocales",
+        "title": "Locale Forge: Configure Locales"
+      }
+    ],
+    "configuration": {
+      "title": "Locale Forge",
+      "properties": {
+        "localeforge.sourceLocale": {
+          "type": "string",
+          "default": "en",
+          "description": "Source locale code used to detect source files."
+        },
+        "localeforge.targetLocales": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "es",
+            "fr",
+            "de",
+            "it",
+            "pt-BR"
+          ],
+          "description": "Target locale codes that should be generated."
+        },
+        "localeforge.autoDetectTargetLocales": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically include target locales detected from sibling locale files."
+        },
+        "localeforge.openai.model": {
+          "type": "string",
+          "default": "gpt-4.1-mini",
+          "description": "OpenAI model used for locale translation."
+        },
+        "localeforge.concurrency": {
+          "type": "number",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Maximum number of parallel locale translation requests."
+        },
+        "localeforge.filePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/en.json",
+            "**/*.en.json"
+          ],
+          "description": "Glob-like patterns used to detect source locale files."
+        },
+        "localeforge.overwriteExisting": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether generated target locale files overwrite existing files."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "clean": "rimraf dist .tmp-vscode-test *.vsix",
+    "compile": "tsc -p .",
+    "watch": "tsc -w -p .",
+    "lint": "eslint \"src/**/*.ts\"",
+    "test:unit": "vitest run src/test/unit",
+    "test:integration": "npm run compile && node ./dist/test/runTest.js",
+    "test": "npm run test:unit && npm run test:integration",
+    "package:vsix": "npm run compile && npx @vscode/vsce package --no-dependencies",
+    "publish:vsce": "npm run compile && npx @vscode/vsce publish --no-dependencies",
+    "vscode:prepublish": "npm run compile"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/localeforge/locale-forge"
+  },
+  "overrides": {
+    "minimatch": "^10.2.2",
+    "diff": "^8.0.2"
+  },
+  "dependencies": {
+    "minimatch": "^10.2.2",
+    "openai": "^6.24.0",
+    "p-limit": "^7.3.0"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^25.3.0",
+    "@types/vscode": "^1.109.0",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.7.1",
+    "eslint": "^8.57.1",
+    "mocha": "^11.7.5",
+    "rimraf": "^6.1.3",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

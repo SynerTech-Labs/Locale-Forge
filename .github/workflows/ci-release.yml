@@ -1,0 +1,100 @@
+name: CI and Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_test_package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run compile
+
+      - name: Test
+        run: npm run test
+
+      - name: Package extension
+        run: npm run package:vsix
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: locale-forge-vsix
+          path: "*.vsix"
+
+  publish_marketplace:
+    needs: build_test_package
+    if: ${{ secrets.VSCE_PAT != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download VSIX artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: locale-forge-vsix
+          path: .
+
+      - name: Resolve extension metadata
+        id: meta
+        run: |
+          echo "id=$(node -p "const p=require('./package.json'); `${p.publisher}.${p.name}`")" >> $GITHUB_OUTPUT
+          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Check if version already published
+        id: check_version
+        env:
+          EXTENSION_ID: ${{ steps.meta.outputs.id }}
+          EXTENSION_VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          set +e
+          npx @vscode/vsce show "$EXTENSION_ID" --json > show.json
+          status=$?
+          set -e
+
+          if [ $status -ne 0 ]; then
+            echo "published=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          result=$(node -e "const fs=require('node:fs'); const data=JSON.parse(fs.readFileSync('show.json','utf8')); const version=process.env.EXTENSION_VERSION; const versions=Array.isArray(data?.versions)?data.versions:Array.isArray(data)?data.flatMap((e)=>e?.versions??[]):[]; const exists=versions.some((entry)=>typeof entry==='string'?entry===version:entry?.version===version); process.stdout.write(exists?'true':'false');")
+          echo "published=$result" >> $GITHUB_OUTPUT
+
+      - name: Publish to VS Marketplace
+        if: steps.check_version.outputs.published != 'true'
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          VSIX_FILE=$(ls *.vsix | head -n 1)
+          npx @vscode/vsce publish --packagePath "$VSIX_FILE" -p "$VSCE_PAT"
+
+      - name: Skip publish (already exists)
+        if: steps.check_version.outputs.published == 'true'
+        run: echo "Version already published. Skipping."
