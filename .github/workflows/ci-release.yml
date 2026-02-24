@@ -41,34 +41,50 @@ jobs:
 
   publish_marketplace:
     needs: build_test_package
-    if: ${{ secrets.VSCE_PAT != '' }}
     runs-on: ubuntu-latest
+    env:
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
     steps:
+      - name: Check publish prerequisites
+        id: prereq
+        run: |
+          if [ -z "$VSCE_PAT" ]; then
+            echo "can_publish=false" >> $GITHUB_OUTPUT
+          else
+            echo "can_publish=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Checkout
+        if: steps.prereq.outputs.can_publish == 'true'
         uses: actions/checkout@v4
 
       - name: Setup Node
+        if: steps.prereq.outputs.can_publish == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
       - name: Install dependencies
+        if: steps.prereq.outputs.can_publish == 'true'
         run: npm ci
 
       - name: Download VSIX artifact
+        if: steps.prereq.outputs.can_publish == 'true'
         uses: actions/download-artifact@v4
         with:
           name: locale-forge-vsix
           path: .
 
       - name: Resolve extension metadata
+        if: steps.prereq.outputs.can_publish == 'true'
         id: meta
         run: |
-          echo "id=$(node -p "const p=require('./package.json'); `${p.publisher}.${p.name}`")" >> $GITHUB_OUTPUT
-          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+          echo "id=$(node -p \"const p=require('./package.json'); p.publisher + '.' + p.name\")" >> "$GITHUB_OUTPUT"
+          echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
 
       - name: Check if version already published
+        if: steps.prereq.outputs.can_publish == 'true'
         id: check_version
         env:
           EXTENSION_ID: ${{ steps.meta.outputs.id }}
@@ -88,13 +104,15 @@ jobs:
           echo "published=$result" >> $GITHUB_OUTPUT
 
       - name: Publish to VS Marketplace
-        if: steps.check_version.outputs.published != 'true'
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        if: steps.prereq.outputs.can_publish == 'true' && steps.check_version.outputs.published != 'true'
         run: |
           VSIX_FILE=$(ls *.vsix | head -n 1)
           npx @vscode/vsce publish --packagePath "$VSIX_FILE" -p "$VSCE_PAT"
 
       - name: Skip publish (already exists)
-        if: steps.check_version.outputs.published == 'true'
+        if: steps.prereq.outputs.can_publish == 'true' && steps.check_version.outputs.published == 'true'
         run: echo "Version already published. Skipping."
+
+      - name: Skip publish (missing VSCE_PAT)
+        if: steps.prereq.outputs.can_publish != 'true'
+        run: echo "VSCE_PAT secret is not set. Skipping publish."
