@@ -109,7 +109,7 @@
     "clean": "rimraf dist .tmp-vscode-test *.vsix",
     "compile": "tsc -p .",
     "watch": "tsc -w -p .",
-    "lint": "eslint \"src/**/*.ts\"",
+    "lint": "eslint src --ext .ts",
     "test:unit": "vitest run src/test/unit",
     "test:integration": "npm run compile && node ./dist/test/runTest.js",
     "test": "npm run test:unit && npm run test:integration",
