@@ -82,8 +82,11 @@ jobs:
         if: steps.prereq.outputs.can_publish == 'true'
         id: meta
         run: |
-          echo "id=$(node -p \"const p=require('./package.json'); p.publisher + '.' + p.name\")" >> "$GITHUB_OUTPUT"
-          echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+          node <<'NODE' >> "$GITHUB_OUTPUT"
+          const p = require("./package.json");
+          console.log(`id=${p.publisher}.${p.name}`);
+          console.log(`version=${p.version}`);
+          NODE
 
       - name: Check if version already published
         if: steps.prereq.outputs.can_publish == 'true'
